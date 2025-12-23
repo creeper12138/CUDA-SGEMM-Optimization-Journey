@@ -14,7 +14,7 @@ The final kernel achieves **7.36 TFLOPS**, reaching **~78.3% of cuBLAS performan
 Additionally, I integrated this high-performance kernel into a **TensorRT Plugin** to demonstrate a fused operator scenario (`GEMM + Bias + ReLU`), proving its value in real-world deep learning inference.
 
 ## 🛠️ Environment
-* **GPU**: NVIDIA RTX 4060 Laptop (Ampere Architecture)
+* **GPU**: NVIDIA RTX 4060 Laptop (Ada Lovelace Architecture)
 * **CUDA**: 11.8
 * **Compiler**: NVCC (MSVC Host)
 * **Matrix Size**: 4096 x 4096 x 4096
@@ -66,6 +66,6 @@ This compiles the single `.cu` file containing all 6 phases and the cuBLAS basel
 
 ```bash
 # Make sure to link cublas and specify architecture (sm_86 for RTX 30 series)
-nvcc -O3 -arch=sm_86 -lcublas -o optimization_journey src/optimization_journey.cu
+nvcc -O3 -arch=sm_89 -lcublas -o optimization_journey src/optimization_journey.cu
 
 ./optimization_journey
