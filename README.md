@@ -37,7 +37,7 @@ The performance evolution is broken down into 6 phases. Each phase tackles a spe
 
 To verify the hardware efficiency, I profiled the Phase 5 kernel using **NVIDIA Nsight Compute**.
 
-![Nsight Analysis](nsight_analysis.png)
+![Nsight Analysis](nsight_analysis.jpg)
 
 * **Memory Throughput (76.46%)**: The kernel effectively saturates the Global Memory bandwidth. This confirms that our **Vectorized Load (`float4`)** and **Async Copy (`cp.async`)** strategies are working perfectly to hide latency.
 * **Compute (SM) Throughput (66.87%)**: The Streaming Multiprocessors are kept busy calculating matrix products.
