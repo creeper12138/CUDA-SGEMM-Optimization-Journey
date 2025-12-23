@@ -5,7 +5,7 @@
 > **"Optimization is not just about writing faster code; it's about understanding the hardware limit."**
 
 ## 📖 Introduction
-This project documents my deep-dive journey of optimizing **Single Precision Matrix Multiplication (SGEMM)** on NVIDIA Ampere Architecture (RTX 3060 Laptop).
+This project documents my deep-dive journey of optimizing **Single Precision Matrix Multiplication (SGEMM)** on NVIDIA Ampere Architecture (RTX 4060 Laptop).
 
 Starting from a naive implementation achieving only **0.75 TFLOPS**, I incrementally applied optimization techniques—ranging from memory coalescing to Ampere-specific asynchronous copies—to push the hardware to its limit.
 
@@ -14,7 +14,7 @@ The final kernel achieves **7.36 TFLOPS**, reaching **~78.3% of cuBLAS performan
 Additionally, I integrated this high-performance kernel into a **TensorRT Plugin** to demonstrate a fused operator scenario (`GEMM + Bias + ReLU`), proving its value in real-world deep learning inference.
 
 ## 🛠️ Environment
-* **GPU**: NVIDIA RTX 3060 Laptop (Ampere Architecture)
+* **GPU**: NVIDIA RTX 4060 Laptop (Ampere Architecture)
 * **CUDA**: 11.8
 * **Compiler**: NVCC (MSVC Host)
 * **Matrix Size**: 4096 x 4096 x 4096
