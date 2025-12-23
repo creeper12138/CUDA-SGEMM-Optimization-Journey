@@ -33,6 +33,16 @@ The performance evolution is broken down into 6 phases. Each phase tackles a spe
 | **5** | **Async Copy** | **7.36** | **9.8x** | **The Final Weapon.** Using Ampere's `cp.async` to bypass registers for Global-to-Shared copies. This hid memory latency and recovered occupancy. |
 | **Ref** | **cuBLAS** | 9.40 | - | Official NVIDIA Library Baseline. |
 
+### 🔬 Deep Dive: Nsight Compute Analysis
+
+To verify the hardware efficiency, I profiled the Phase 5 kernel using **NVIDIA Nsight Compute**.
+
+![Nsight Analysis](nsight_analysis.png)
+
+* **Memory Throughput (76.46%)**: The kernel effectively saturates the Global Memory bandwidth. This confirms that our **Vectorized Load (`float4`)** and **Async Copy (`cp.async`)** strategies are working perfectly to hide latency.
+* **Compute (SM) Throughput (66.87%)**: The Streaming Multiprocessors are kept busy calculating matrix products.
+* **Balanced Workload**: The high utilization of both Memory and Compute indicates a well-balanced kernel. We are hitting the physical limits of the RTX 3060 hardware for SGEMM operations.
+
 ### Deep Dive Analysis
 
 1.  **The "Aha!" Moment (Phase 3)**:
