@@ -5,11 +5,11 @@
 > **"Optimization is not just about writing faster code; it's about understanding the hardware limit."**
 
 ## 📖 Introduction
-This project documents my deep-dive journey of optimizing **Single Precision Matrix Multiplication (SGEMM)** on NVIDIA Ampere Architecture (RTX 4060 Laptop).
+This project documents my deep-dive journey of optimizing **Single Precision Matrix Multiplication (SGEMM)** on NVIDIA Ada Lovelace Architecture (RTX 4060 Laptop).
 
-Starting from a naive implementation achieving only **0.75 TFLOPS**, I incrementally applied optimization techniques—ranging from memory coalescing to Ampere-specific asynchronous copies—to push the hardware to its limit.
+Starting from a naive implementation achieving only **0.79 TFLOPS**, I incrementally applied optimization techniques—ranging from memory coalescing to Ampere-specific asynchronous copies—to push the hardware to its limit.
 
-The final kernel achieves **7.36 TFLOPS**, reaching **~78.3% of cuBLAS performance** using pure CUDA C++ (no assembly).
+The final kernel achieves **8.85 TFLOPS**, reaching **~93.7% of cuBLAS performance** using pure CUDA C++ (no assembly).
 
 Additionally, I integrated this high-performance kernel into a **TensorRT Plugin** to demonstrate a fused operator scenario (`GEMM + Bias + ReLU`), proving its value in real-world deep learning inference.
 
@@ -25,14 +25,13 @@ The performance evolution is broken down into 6 phases. Each phase tackles a spe
 
 | Phase | Technique | Perf (TFLOPS) | Speedup | Key Insight |
 | :--- | :--- | :--- | :--- | :--- |
-| **0** | **Naive** | 0.75 | 1.0x | Global Memory Bound. Simple 3-loop implementation. |
-| **1** | **Shared Memory** | 1.10 | 1.4x | Block Tiling (32x32). Reduces Global Mem traffic. |
-| **2** | **Vectorized** | 1.10 | 1.4x | `float4` access. Maximizes memory bandwidth utilization. |
-| **3** | **Register Tiling** | **6.79** | **9.0x** | **The Breakthrough.** 2D Register Blocking (8x8) drastically increases arithmetic intensity, shifting the kernel from Memory-Bound to Compute-Bound. |
-| **4** | **Double Buffer** | 6.89 | 9.1x | Software Prefetching. Gain was limited due to high **Register Pressure** reducing occupancy. |
-| **5** | **Async Copy** | **7.36** | **9.8x** | **The Final Weapon.** Using Ampere's `cp.async` to bypass registers for Global-to-Shared copies. This hid memory latency and recovered occupancy. |
-| **Ref** | **cuBLAS** | 9.40 | - | Official NVIDIA Library Baseline. |
-
+| **0** | **Naive** | 0.79 | 1.0x | Global Memory Bound. Simple 3-loop implementation. |
+| **1** | **Shared Memory** | 1.08 | 1.4x | Block Tiling (32x32). Reduces Global Mem traffic. |
+| **2** | **Vectorized** | 1.07 | 1.4x | `float4` access. Maximizes memory bandwidth utilization. |
+| **3** | **Register Tiling** | 7.37 | 9.3x | **The Breakthrough.** 2D Register Blocking (8x8) drastically increases arithmetic intensity, shifting the kernel from Memory-Bound to Compute-Bound. |
+| **4** | **Double Buffer** | 8.06 | 10.2x | Software Prefetching. Hides memory latency but gains were limited by **Register Pressure**. |
+| **5** | **Async Copy** | **8.85** | **11.2x** | **The Final Weapon.** Using Ampere's `cp.async` to bypass registers for Global-to-Shared copies. This efficiently hid memory latency and recovered occupancy. |
+| **Ref** | **cuBLAS** | 9.45 | - | Official NVIDIA Library Baseline. |
 ### 🔬 Deep Dive: Nsight Compute Analysis
 
 To verify the hardware efficiency, I profiled the Phase 5 kernel using **NVIDIA Nsight Compute**.
