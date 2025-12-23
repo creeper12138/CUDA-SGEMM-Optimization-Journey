@@ -6,10 +6,10 @@
 #include <vector>
 #include <cmath>
 #include <iostream>
-#include <cublas_v2.h> // <--- ĞÂÔöÕâ¸ö
+#include <cublas_v2.h>
 
 // =================================================================================
-// ¹¤¾ßºêÓë¸¨Öúº¯Êı
+// å·¥å…·å®ä¸è¾…åŠ©å‡½æ•°
 // =================================================================================
 #define CEIL_DIV(M, N) (((M) + (N)-1) / (N))
 
@@ -25,8 +25,8 @@
 }
 
 // =================================================================================
-// Phase 0: Naive (»ù×¼Ïß)
-// ĞŞÕıµã£ºĞŞ¸´ÁË n -> N µÄÆ´Ğ´´íÎó
+// Phase 0: Naive (åŸºå‡†çº¿)
+// ä¿®æ­£ç‚¹ï¼šä¿®å¤äº† n -> N çš„æ‹¼å†™é”™è¯¯
 // =================================================================================
 __global__ void sgemm_0_naive(const float* A, const float* B, float* C, int M, int N, int K) {
     int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -37,12 +37,12 @@ __global__ void sgemm_0_naive(const float* A, const float* B, float* C, int M, i
         for (int k = 0; k < K; ++k) {
             sum += A[row * K + k] * B[k * N + col];
         }
-        C[row * N + col] = sum; // ÕâÀïÖ®Ç°Ğ´³ÉÁË n£¬ÒÑĞŞÕıÎª N
+        C[row * N + col] = sum; // è¿™é‡Œä¹‹å‰å†™æˆäº† nï¼Œå·²ä¿®æ­£ä¸º N
     }
 }
 
 // =================================================================================
-// Phase 1: Shared Memory (·Ö¿éÓÅ»¯)
+// Phase 1: Shared Memory (åˆ†å—ä¼˜åŒ–)
 // =================================================================================
 template <int BLOCK_SIZE>
 __global__ void sgemm_1_shared(const float* A, const float* B, float* C, int M, int N, int K) {
@@ -54,7 +54,7 @@ __global__ void sgemm_1_shared(const float* A, const float* B, float* C, int M, 
     float sum = 0.0f;
 
     for (int k = 0; k < K; k += BLOCK_SIZE) {
-        // ¼ÓÔØÊı¾İ
+        // åŠ è½½æ•°æ®
         if (row < M && (k + threadIdx.x) < K)
             As[threadIdx.y][threadIdx.x] = A[row * K + k + threadIdx.x];
         else
@@ -67,7 +67,7 @@ __global__ void sgemm_1_shared(const float* A, const float* B, float* C, int M, 
 
         __syncthreads();
 
-        // ¼ÆËã
+        // è®¡ç®—
         for (int i = 0; i < BLOCK_SIZE; ++i)
             sum += As[threadIdx.y][i] * Bs[i][threadIdx.x];
 
@@ -79,15 +79,15 @@ __global__ void sgemm_1_shared(const float* A, const float* B, float* C, int M, 
 }
 
 // =================================================================================
-// Phase 2: Vectorized (float4 ·Ã´æ)
+// Phase 2: Vectorized (float4 è®¿å­˜)
 // =================================================================================
 template <int BLOCK_SIZE>
 __global__ void sgemm_2_vectorized(const float* A, const float* B, float* C, int M, int N, int K) {
     __shared__ float As[BLOCK_SIZE][BLOCK_SIZE];
     __shared__ float Bs[BLOCK_SIZE][BLOCK_SIZE];
 
-    // Ïß³ÌÓ³Éä£ºBLOCK_SIZE 32x32 = 1024 ¸öÔªËØ
-    // Ã¿¸öÏß³Ì°áÔË float4 (4¸öfloat)£¬ËùÒÔÖ»ĞèÒª 256 ¸öÏß³Ì²ÎÓë°áÔË
+    // çº¿ç¨‹æ˜ å°„ï¼šBLOCK_SIZE 32x32 = 1024 ä¸ªå…ƒç´ 
+    // æ¯ä¸ªçº¿ç¨‹æ¬è¿ float4 (4ä¸ªfloat)ï¼Œæ‰€ä»¥åªéœ€è¦ 256 ä¸ªçº¿ç¨‹å‚ä¸æ¬è¿
     int tid = threadIdx.y * blockDim.x + threadIdx.x;
     int load_row = tid / (BLOCK_SIZE / 4);
     int load_col = (tid % (BLOCK_SIZE / 4)) * 4;
@@ -97,9 +97,9 @@ __global__ void sgemm_2_vectorized(const float* A, const float* B, float* C, int
     float sum = 0.0f;
 
     for (int k = 0; k < K; k += BLOCK_SIZE) {
-        // Ö»ÓĞÇ°256¸öÏß³Ì¸É»î°áÔË A (¼ÙÉè BLOCK_SIZE=32)
+        // åªæœ‰å‰256ä¸ªçº¿ç¨‹å¹²æ´»æ¬è¿ A (å‡è®¾ BLOCK_SIZE=32)
         if (tid < (BLOCK_SIZE * BLOCK_SIZE / 4)) {
-            // ÕâÀïÎªÁË°²È«£¬Ó¦µ±¼Ó±ß½ç¼ì²é£¬µ«ÎªÁËĞÔÄÜÑİÊ¾ÇÒNÊÇ32±¶Êı£¬ÏÈÂÔ¹ıÑÏ¸ñ±ß½ç
+            // è¿™é‡Œä¸ºäº†å®‰å…¨ï¼Œåº”å½“åŠ è¾¹ç•Œæ£€æŸ¥ï¼Œä½†ä¸ºäº†æ€§èƒ½æ¼”ç¤ºä¸”Næ˜¯32å€æ•°ï¼Œå…ˆç•¥è¿‡ä¸¥æ ¼è¾¹ç•Œ
             float4 v_a = reinterpret_cast<const float4*>(&A[(blockIdx.y * BLOCK_SIZE + load_row) * K + (k + load_col)])[0];
             As[load_row][load_col + 0] = v_a.x; As[load_row][load_col + 1] = v_a.y;
             As[load_row][load_col + 2] = v_a.z; As[load_row][load_col + 3] = v_a.w;
@@ -119,7 +119,7 @@ __global__ void sgemm_2_vectorized(const float* A, const float* B, float* C, int
 }
 
 // =================================================================================
-// ºËĞÄ²ÎÊı¶¨Òå (Phase 3, 4, 5 Í¨ÓÃ)
+// æ ¸å¿ƒå‚æ•°å®šä¹‰ (Phase 3, 4, 5 é€šç”¨)
 // =================================================================================
 #define BM 128
 #define BN 128
@@ -128,7 +128,7 @@ __global__ void sgemm_2_vectorized(const float* A, const float* B, float* C, int
 #define TN 8
 
 // =================================================================================
-// Phase 3: Register Tiling (µ¥»º³å Single Buffer)
+// Phase 3: Register Tiling (å•ç¼“å†² Single Buffer)
 // =================================================================================
 __global__ void sgemm_3_reg_tiled_1buf(const float* A, const float* B, float* C, int M, int N, int K) {
     int by = blockIdx.y, bx = blockIdx.x;
@@ -145,7 +145,7 @@ __global__ void sgemm_3_reg_tiled_1buf(const float* A, const float* B, float* C,
     const float* B_ptr = B + bx * BN;
 
     for (int k = 0; k < K; k += BK) {
-        // --- °áÔË A (128x8) ---
+        // --- æ¬è¿ A (128x8) ---
         int load_a_row = tid / 2;
         int load_a_col = (tid % 2) * 4;
         if (load_a_row < BM) {
@@ -153,7 +153,7 @@ __global__ void sgemm_3_reg_tiled_1buf(const float* A, const float* B, float* C,
             As[load_a_row][load_a_col] = v.x; As[load_a_row][load_a_col + 1] = v.y;
             As[load_a_row][load_a_col + 2] = v.z; As[load_a_row][load_a_col + 3] = v.w;
         }
-        // --- °áÔË B (8x128) ---
+        // --- æ¬è¿ B (8x128) ---
         int load_b_row = tid / 32;
         int load_b_col = (tid % 32) * 4;
         if (load_b_row < BK) {
@@ -163,7 +163,7 @@ __global__ void sgemm_3_reg_tiled_1buf(const float* A, const float* B, float* C,
         }
         __syncthreads();
 
-        // --- ¼ÆËã ---
+        // --- è®¡ç®— ---
 #pragma unroll
         for (int i = 0; i < BK; ++i) {
 #pragma unroll
@@ -177,7 +177,7 @@ __global__ void sgemm_3_reg_tiled_1buf(const float* A, const float* B, float* C,
         __syncthreads();
     }
 
-    // Ğ´»Ø
+    // å†™å›
 #pragma unroll
     for (int r = 0; r < TM; ++r) {
         for (int c = 0; c < TN; ++c) {
@@ -190,7 +190,7 @@ __global__ void sgemm_3_reg_tiled_1buf(const float* A, const float* B, float* C,
 }
 
 // =================================================================================
-// Phase 4: Double Buffering (Èí¼şË«»º³å)
+// Phase 4: Double Buffering (è½¯ä»¶åŒç¼“å†²)
 // =================================================================================
 __global__ void sgemm_4_double_buffer(const float* A, const float* B, float* C, int M, int N, int K) {
     int by = blockIdx.y, bx = blockIdx.x;
@@ -213,7 +213,7 @@ __global__ void sgemm_4_double_buffer(const float* A, const float* B, float* C, 
 
     // --- Prologue ---
     {
-        // Ô¤È¡µÚ0¿éµ½ Shared[0]
+        // é¢„å–ç¬¬0å—åˆ° Shared[0]
         int load_a_row = tid / 2; int load_a_col = (tid % 2) * 4;
         if (load_a_row < BM) {
             load_a_reg = reinterpret_cast<const float4*>(&A_ptr[load_a_row * K + 0 + load_a_col])[0];
@@ -233,7 +233,7 @@ __global__ void sgemm_4_double_buffer(const float* A, const float* B, float* C, 
     for (int k = 0; k < K; k += BK) {
         int next_k = k + BK;
 
-        // 1. Ô¤È¡ÏÂÒ»¿éµ½¼Ä´æÆ÷
+        // 1. é¢„å–ä¸‹ä¸€å—åˆ°å¯„å­˜å™¨
         if (next_k < K) {
             int load_a_row = tid / 2; int load_a_col = (tid % 2) * 4;
             if (load_a_row < BM)
@@ -244,7 +244,7 @@ __global__ void sgemm_4_double_buffer(const float* A, const float* B, float* C, 
                 load_b_reg = reinterpret_cast<const float4*>(&B_ptr[(next_k + load_b_row) * N + load_b_col])[0];
         }
 
-        // 2. ¼ÆËãµ±Ç°¿é Shared[read_stage]
+        // 2. è®¡ç®—å½“å‰å— Shared[read_stage]
 #pragma unroll
         for (int i = 0; i < BK; ++i) {
 #pragma unroll
@@ -256,8 +256,8 @@ __global__ void sgemm_4_double_buffer(const float* A, const float* B, float* C, 
                 for (int c = 0; c < TN; ++c) thread_results[r][c] += reg_a[r] * reg_b[c];
         }
 
-        // 3. ÌîÈë Shared[write_stage]
-        __syncthreads(); // ±ØĞëµÈ´ı´ó¼Ò¶ÁÍê read_stage
+        // 3. å¡«å…¥ Shared[write_stage]
+        __syncthreads(); // å¿…é¡»ç­‰å¾…å¤§å®¶è¯»å®Œ read_stage
 
         if (next_k < K) {
             int load_a_row = tid / 2; int load_a_col = (tid % 2) * 4;
@@ -273,10 +273,10 @@ __global__ void sgemm_4_double_buffer(const float* A, const float* B, float* C, 
             read_stage ^= 1;
             write_stage ^= 1;
         }
-        __syncthreads(); // ±ØĞëµÈ´ı´ó¼ÒĞ´Íê write_stage
+        __syncthreads(); // å¿…é¡»ç­‰å¾…å¤§å®¶å†™å®Œ write_stage
     }
 
-    // Ğ´»Ø
+    // å†™å›
 #pragma unroll
     for (int r = 0; r < TM; ++r) {
         for (int c = 0; c < TN; ++c) {
@@ -289,7 +289,7 @@ __global__ void sgemm_4_double_buffer(const float* A, const float* B, float* C, 
 }
 
 // =================================================================================
-// Phase 5: Async Copy (AmpereÒì²½Á÷Ë®Ïß)
+// Phase 5: Async Copy (Ampereå¼‚æ­¥æµæ°´çº¿)
 // =================================================================================
 __global__ void sgemm_5_async(float* A, float* B, float* C, int M, int N, int K) {
     int by = blockIdx.y, bx = blockIdx.x;
@@ -310,7 +310,7 @@ __global__ void sgemm_5_async(float* A, float* B, float* C, int M, int N, int K)
     int load_a_row = tid / 2; int load_a_col = (tid % 2) * 4;
     int load_b_row = tid / 32; int load_b_col = (tid % 32) * 4;
 
-    // Òì²½¼ÓÔØµÚ0¿é
+    // å¼‚æ­¥åŠ è½½ç¬¬0å—
     __pipeline_memcpy_async(&As[0][load_a_row][load_a_col], &A_ptr[load_a_row * K + 0 + load_a_col], 16);
     __pipeline_memcpy_async(&Bs[0][load_b_row][load_b_col], &B_ptr[(0 + load_b_row) * N + load_b_col], 16);
     __pipeline_commit();
@@ -321,14 +321,14 @@ __global__ void sgemm_5_async(float* A, float* B, float* C, int M, int N, int K)
     for (int k = 0; k < K; k += BK) {
         int next_k = k + BK;
 
-        // 1. Òì²½°áÔËÏÂÒ»¿é
+        // 1. å¼‚æ­¥æ¬è¿ä¸‹ä¸€å—
         if (next_k < K) {
             __pipeline_memcpy_async(&As[write_stage][load_a_row][load_a_col], &A_ptr[load_a_row * K + next_k + load_a_col], 16);
             __pipeline_memcpy_async(&Bs[write_stage][load_b_row][load_b_col], &B_ptr[(next_k + load_b_row) * N + load_b_col], 16);
         }
-        __pipeline_commit(); // Ìá½»ÈÎÎñ
+        __pipeline_commit(); // æäº¤ä»»åŠ¡
 
-        // 2. ¼ÆËãµ±Ç°¿é
+        // 2. è®¡ç®—å½“å‰å—
 #pragma unroll
         for (int i = 0; i < BK; ++i) {
 #pragma unroll
@@ -340,8 +340,8 @@ __global__ void sgemm_5_async(float* A, float* B, float* C, int M, int N, int K)
                 for (int c = 0; c < TN; ++c) thread_results[r][c] += reg_a[r] * reg_b[c];
         }
 
-        // 3. µÈ´ıÒì²½°áÔË
-        __pipeline_wait_prior(0); // µÈ´ı¸Õ²ÅÌá½»µÄÄÇÒ»×éÍê³É
+        // 3. ç­‰å¾…å¼‚æ­¥æ¬è¿
+        __pipeline_wait_prior(0); // ç­‰å¾…åˆšæ‰æäº¤çš„é‚£ä¸€ç»„å®Œæˆ
         __syncthreads();
 
         if (next_k < K) {
@@ -362,30 +362,30 @@ __global__ void sgemm_5_async(float* A, float* B, float* C, int M, int N, int K)
 }
 
 // =================================================================================
-// Reference: cuBLAS (NVIDIA ¹Ù·½¿â)
+// Reference: cuBLAS (NVIDIA å®˜æ–¹åº“)
 // =================================================================================
 void bench_cublas(float* d_A, float* d_B, float* d_C, int M, int N, int K, int iter) {
     cublasHandle_t handle;
     cublasCreate(&handle);
 
-    // cuBLAS Ä¬ÈÏÊÇÁĞÖ÷Ğò (Column Major)£¬¶øC++ÊÇĞĞÖ÷Ğò (Row Major)¡£
-    // ÎªÁËÀûÓÃ A*B = (B^T * A^T)^T µÄÊıÑ§ĞÔÖÊ£¬
-    // ÎÒÃÇ½»»» A ºÍ B µÄË³Ğò´«¸ø cuBLAS£¬ÕâÑùËã³öÀ´µÄ C ÔÚÄÚ´æÀï¾ÍÊÇÕıÈ·µÄĞĞÖ÷Ğò½á¹û¡£
-    // ²»¹ı¶ÔÓÚÅÜ·ÖÀ´Ëµ£¬ÔõÃ´´«¶¼²»Ó°ÏìËÙ¶È£¬ÕâÀïÓÃ×î¼òµ¥µÄ·½Ê½£º
+    // cuBLAS é»˜è®¤æ˜¯åˆ—ä¸»åº (Column Major)ï¼Œè€ŒC++æ˜¯è¡Œä¸»åº (Row Major)ã€‚
+    // ä¸ºäº†åˆ©ç”¨ A*B = (B^T * A^T)^T çš„æ•°å­¦æ€§è´¨ï¼Œ
+    // æˆ‘ä»¬äº¤æ¢ A å’Œ B çš„é¡ºåºä¼ ç»™ cuBLASï¼Œè¿™æ ·ç®—å‡ºæ¥çš„ C åœ¨å†…å­˜é‡Œå°±æ˜¯æ­£ç¡®çš„è¡Œä¸»åºç»“æœã€‚
+    // ä¸è¿‡å¯¹äºè·‘åˆ†æ¥è¯´ï¼Œæ€ä¹ˆä¼ éƒ½ä¸å½±å“é€Ÿåº¦ï¼Œè¿™é‡Œç”¨æœ€ç®€å•çš„æ–¹å¼ï¼š
     const float alpha = 1.0f;
     const float beta = 0.0f;
 
     cudaEvent_t start, stop;
     cudaEventCreate(&start); cudaEventCreate(&stop);
 
-    // Ô¤ÈÈ
+    // é¢„çƒ­
     cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
         N, M, K, &alpha, d_B, N, d_A, K, &beta, d_C, N);
 
     cudaEventRecord(start);
     for (int i = 0; i < iter; i++) {
-        // ×¢ÒâÕâÀïÎªÁËÊÊÅäĞĞÖ÷Ğò£¬ÎÒÃÇÂß¼­ÉÏ½»»»ÁË A ºÍ B
-        // Êµ¼Ê¼ÆËãµÄÊÇ C = A * B
+        // æ³¨æ„è¿™é‡Œä¸ºäº†é€‚é…è¡Œä¸»åºï¼Œæˆ‘ä»¬é€»è¾‘ä¸Šäº¤æ¢äº† A å’Œ B
+        // å®é™…è®¡ç®—çš„æ˜¯ C = A * B
         cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
             N, M, K, &alpha, d_B, N, d_A, K, &beta, d_C, N);
     }
@@ -395,7 +395,7 @@ void bench_cublas(float* d_A, float* d_B, float* d_C, int M, int N, int K, int i
     float ms = 0;
     cudaEventElapsedTime(&ms, start, stop);
 
-    // ¼ÆËãĞÔÄÜ
+    // è®¡ç®—æ€§èƒ½
     double ops = 2.0 * (double)M * (double)N * (double)K;
     double tflops = (ops * 1e-12) / (ms / iter / 1000.0f);
 
@@ -406,11 +406,29 @@ void bench_cublas(float* d_A, float* d_B, float* d_C, int M, int N, int K, int i
 
 
 // =================================================================================
-// Main Harness (ÆÀ²âÖ÷³ÌĞò)
+// Main Harness (è¯„æµ‹ä¸»ç¨‹åº)
 // =================================================================================
 void print_perf(const char* name, float ms, double ops) {
     double tflops = (ops * 1e-12) / (ms / 1000.0f);
     printf("%-25s | Time: %7.3f ms | Perf: %6.3f TFLOPS\n", name, ms, tflops);
+}
+
+void verify_correctness(float* d_ref, float* d_act, int N_el) {
+    std::vector<float> h_ref(N_el);
+    std::vector<float> h_act(N_el);
+    cudaMemcpy(h_ref.data(), d_ref, N_el * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_act.data(), d_act, N_el * sizeof(float), cudaMemcpyDeviceToHost);
+
+    float max_diff = 0.0f;
+    for (int i = 0; i < N_el; i++) {
+        float diff = std::abs(h_ref[i] - h_act[i]);
+        if (diff > max_diff) max_diff = diff;
+        if (diff > 0.1f) { // å®¹å¿åº¦ç¨å¾®å¤§ç‚¹ï¼ŒFP32ç´¯åŠ è¯¯å·®
+            printf("âŒ Verification FAILED at index %d! Ref: %f, Act: %f\n", i, h_ref[i], h_act[i]);
+            return;
+        }
+    }
+    printf("âœ… Verification PASSED! Max diff: %f\n", max_diff);
 }
 
 int main() {
@@ -432,7 +450,7 @@ int main() {
 
     // Device Memory
     float* d_A, * d_B, * d_C;
-    CHECK_CUDA(cudaMalloc(&d_A, size)); // ¼ò»¯£ºÕâÀïÎÒÃÇÈÃM=N=K£¬ËùÒÔsizeÒ»Ñù
+    CHECK_CUDA(cudaMalloc(&d_A, size)); // ç®€åŒ–ï¼šè¿™é‡Œæˆ‘ä»¬è®©M=N=Kï¼Œæ‰€ä»¥sizeä¸€æ ·
     CHECK_CUDA(cudaMalloc(&d_B, size));
     CHECK_CUDA(cudaMalloc(&d_C, size));
 
@@ -442,7 +460,10 @@ int main() {
     cudaEvent_t start, stop;
     cudaEventCreate(&start); cudaEventCreate(&stop);
     float ms = 0;
-    int iter = 5;
+    int iter = 50;
+
+
+
 
     // --------------------------------------------------------
     // Phase 0: Naive
@@ -471,7 +492,7 @@ int main() {
 
     // --------------------------------------------------------
     // Phase 3: Register Tiled (Single Buffer)
-    // ×¢Òâ£ºÕâÀïÊ¹ÓÃ 16x16 µÄ Block (256 threads)
+    // æ³¨æ„ï¼šè¿™é‡Œä½¿ç”¨ 16x16 çš„ Block (256 threads)
     dim3 b16(16, 16); dim3 g128(CEIL_DIV(N, 128), CEIL_DIV(M, 128));
     cudaEventRecord(start);
     for (int i = 0; i < iter; i++) sgemm_3_reg_tiled_1buf << <g128, b16 >> > (d_A, d_B, d_C, M, N, K);
@@ -495,9 +516,14 @@ int main() {
     cudaEventElapsedTime(&ms, start, stop);
     print_perf("Phase 5: Async Final", ms / iter, ops);
 
-    printf("====================================================================\n");
-    bench_cublas(d_A, d_B, d_C, M, N, K, iter); // <--- ĞÂÔöÕâĞĞ
 
+    float* d_C_ref;
+    CHECK_CUDA(cudaMalloc(&d_C_ref, size));
+    // è·‘ cuBLAS å­˜å…¥ d_C_ref ...
+    bench_cublas(d_A, d_B, d_C_ref, M, N, K, 10); // è·‘å‡ æ¬¡å°±è¡Œ
+
+    printf("====================================================================\n");
+    verify_correctness(d_C_ref, d_C, M * N);
     printf("====================================================================\n");
     cudaFree(d_A); cudaFree(d_B); cudaFree(d_C);
     return 0;
