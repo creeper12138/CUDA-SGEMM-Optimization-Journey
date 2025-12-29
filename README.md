@@ -1,4 +1,4 @@
-# 🚀 CUDA SGEMM Optimization Journey: From Naive to 80% cuBLAS
+# 🚀 CUDA SGEMM Optimization Journey: From Naive to 90% cuBLAS
 
 ![Benchmark Result](benchmark_result.jpg)
 
