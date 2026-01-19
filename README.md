@@ -1,6 +1,7 @@
 # 🚀 CUDA SGEMM Optimization Journey: From Naive to 90% cuBLAS
 
 ![Benchmark Result](benchmark_result.jpg)
+![Nsight Analysis2](res.jpg)
 
 > **"Optimization is not just about writing faster code; it's about understanding the hardware limit."**
 
@@ -37,7 +38,7 @@ The performance evolution is broken down into 6 phases. Each phase tackles a spe
 To verify the hardware efficiency, I profiled the Phase 5 kernel using **NVIDIA Nsight Compute**.
 
 ![Nsight Analysis](nsight_analysis.jpg)
-![Nsight Analysis2](res.jpg)
+![Nsight Analysis2](res1.jpg)
 
 
 * **Memory Throughput (76.46%)**: The kernel effectively saturates the Global Memory bandwidth. This confirms that our **Vectorized Load (`float4`)** and **Async Copy (`cp.async`)** strategies are working perfectly to hide latency.
