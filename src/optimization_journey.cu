@@ -8,9 +8,7 @@
 #include <iostream>
 #include <cublas_v2.h>
 
-// =================================================================================
-// 工具宏与辅助函数
-// =================================================================================
+
 #define CEIL_DIV(M, N) (((M) + (N)-1) / (N))
 
 #define CHECK_CUDA(call) \
@@ -26,7 +24,6 @@
 
 // =================================================================================
 // Phase 0: Naive (基准线)
-// 修正点：修复了 n -> N 的拼写错误
 // =================================================================================
 __global__ void sgemm_0_naive(const float* A, const float* B, float* C, int M, int N, int K) {
     int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -54,7 +51,6 @@ __global__ void sgemm_1_shared(const float* A, const float* B, float* C, int M, 
     float sum = 0.0f;
 
     for (int k = 0; k < K; k += BLOCK_SIZE) {
-        // 加载数据
         if (row < M && (k + threadIdx.x) < K)
             As[threadIdx.y][threadIdx.x] = A[row * K + k + threadIdx.x];
         else
@@ -67,7 +63,6 @@ __global__ void sgemm_1_shared(const float* A, const float* B, float* C, int M, 
 
         __syncthreads();
 
-        // 计算
         for (int i = 0; i < BLOCK_SIZE; ++i)
             sum += As[threadIdx.y][i] * Bs[i][threadIdx.x];
 
@@ -99,7 +94,6 @@ __global__ void sgemm_2_vectorized(const float* A, const float* B, float* C, int
     for (int k = 0; k < K; k += BLOCK_SIZE) {
         // 只有前256个线程干活搬运 A (假设 BLOCK_SIZE=32)
         if (tid < (BLOCK_SIZE * BLOCK_SIZE / 4)) {
-            // 这里为了安全，应当加边界检查，但为了性能演示且N是32倍数，先略过严格边界
             float4 v_a = reinterpret_cast<const float4*>(&A[(blockIdx.y * BLOCK_SIZE + load_row) * K + (k + load_col)])[0];
             As[load_row][load_col + 0] = v_a.x; As[load_row][load_col + 1] = v_a.y;
             As[load_row][load_col + 2] = v_a.z; As[load_row][load_col + 3] = v_a.w;
@@ -528,3 +522,4 @@ int main() {
     cudaFree(d_A); cudaFree(d_B); cudaFree(d_C);
     return 0;
 }
+
